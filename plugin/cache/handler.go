@@ -15,6 +15,7 @@ import (
 // ServeDNS implements the plugin.Handler interface.
 func (c *Cache) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) (int, error) {
 	state := request.Request{W: w, Req: r}
+	do := state.Do()
 
 	zone := plugin.Zones(c.Zones).Matches(state.Name())
 	if zone == "" {
@@ -22,8 +23,13 @@ func (c *Cache) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) 
 	}
 
 	now := c.now().UTC()
-
 	server := metrics.WithServer(ctx)
+
+	// If the request has the OPT record and the DO bit set we leave the message as-is. If there isn't a DO bit
+	// set we will modify the request to _add_ one. This means we will always do DNSSEC lookups. When the reply
+	// comes back we will remove DNSSEC RRs to make non-DNSSEC clients happy. We use a 2048 buffer size, which is
+	// less than 4096 (and older default) and more than 1024 which may be too small. We might need to tweaks this
+	// value to be smaller still to prevent UDP fragmentation?
 
 	ttl := 0
 	i := c.getIgnoreTTL(now, state, server)
@@ -31,6 +37,9 @@ func (c *Cache) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) 
 		ttl = i.ttl(now)
 	}
 	if i == nil {
+		if !do {
+			setDo(r)
+		}
 		crr := &ResponseWriter{ResponseWriter: w, Cache: c, state: state, server: server}
 		return plugin.NextOrFailure(c.Name(), c.Next, ctx, crr, r)
 	}
@@ -40,11 +49,14 @@ func (c *Cache) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) 
 		now = now.Add(time.Duration(ttl) * time.Second)
 		go func() {
 			r := r.Copy()
+			if !do {
+				setDo(r)
+			}
 			crr := &ResponseWriter{Cache: c, state: state, server: server, prefetch: true, remoteAddr: w.LocalAddr()}
 			plugin.NextOrFailure(c.Name(), c.Next, ctx, crr, r)
 		}()
 	}
-	resp := i.toMsg(r, now)
+	resp := i.toMsg(r, now, do)
 	w.WriteMsg(resp)
 
 	if c.shouldPrefetch(i, now) {
@@ -80,7 +92,7 @@ func (c *Cache) shouldPrefetch(i *item, now time.Time) bool {
 func (c *Cache) Name() string { return "cache" }
 
 func (c *Cache) get(now time.Time, state request.Request, server string) (*item, bool) {
-	k := hash(state.Name(), state.QType(), state.Do())
+	k := hash(state.Name(), state.QType())
 
 	if i, ok := c.ncache.Get(k); ok && i.(*item).ttl(now) > 0 {
 		cacheHits.WithLabelValues(server, Denial).Inc()
@@ -97,7 +109,7 @@ func (c *Cache) get(now time.Time, state request.Request, server string) (*item,
 
 // getIgnoreTTL unconditionally returns an item if it exists in the cache.
 func (c *Cache) getIgnoreTTL(now time.Time, state request.Request, server string) *item {
-	k := hash(state.Name(), state.QType(), state.Do())
+	k := hash(state.Name(), state.QType())
 
 	if i, ok := c.ncache.Get(k); ok {
 		ttl := i.(*item).ttl(now)
@@ -118,7 +130,7 @@ func (c *Cache) getIgnoreTTL(now time.Time, state request.Request, server string
 }
 
 func (c *Cache) exists(state request.Request) *item {
-	k := hash(state.Name(), state.QType(), state.Do())
+	k := hash(state.Name(), state.QType())
 	if i, ok := c.ncache.Get(k); ok {
 		return i.(*item)
 	}
@@ -127,3 +139,14 @@ func (c *Cache) exists(state request.Request) *item {
 	}
 	return nil
 }
+
+func setDo(m *dns.Msg) {
+	o := &dns.OPT{Hdr: dns.RR_Header{Name: ".", Rrtype: dns.TypeOPT}}
+	o.SetDo()
+	o.SetUDPSize(defaultUDPBufSize)
+	m.Extra = append(m.Extra, o)
+}
+
+// defaultUDPBufsize is the bufsize the cache plugin uses on outgoing requests that don't
+// have an OPT RR.
+const defaultUDPBufSize = 2048
