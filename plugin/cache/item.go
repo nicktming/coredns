@@ -111,9 +111,9 @@ func (i *item) ttl(now time.Time) int {
 	return ttl
 }
 
-// filterDNSSEC filters the dns.RR slice and removes DNSSEC records. This removes:
-// NSEC,NSEC3,DS and RRSIG/SIG records. DNSKEYs are left alone on the assumptions that if they are
-// there the client explictly asked for them.
+// isDNSSEC return true id r is a DNSSEC record. NSEC,NSEC3,DS and RRSIG/SIG
+// are DNSSEC records. DNSKEYs are left alone on the assumptions that if they
+// are there the client explictly asked for them.
 func isDNSSEC(r dns.RR) bool {
 	switch r.Header().Rrtype {
 	case dns.TypeNSEC:
