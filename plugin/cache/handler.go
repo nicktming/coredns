@@ -140,8 +140,16 @@ func (c *Cache) exists(state request.Request) *item {
 	return nil
 }
 
+// setDo sets the DO bit and UDP buffer size in the message m.
 func setDo(m *dns.Msg) {
-	o := &dns.OPT{Hdr: dns.RR_Header{Name: ".", Rrtype: dns.TypeOPT}}
+	o := m.IsEdns0()
+	if o != nil {
+		o.SetDo()
+		o.SetUDPSize(defaultUDPBufSize)
+		return
+	}
+
+	o = &dns.OPT{Hdr: dns.RR_Header{Name: ".", Rrtype: dns.TypeOPT}}
 	o.SetDo()
 	o.SetUDPSize(defaultUDPBufSize)
 	m.Extra = append(m.Extra, o)

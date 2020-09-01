@@ -19,7 +19,7 @@ func TestDo(t *testing.T) {
 	req.SetQuestion("example.org.", dns.TypeA)
 	rec := dnstest.NewRecorder(&test.ResponseWriter{})
 
-	// No DO set
+	// No DO set.
 	c.ServeDNS(context.TODO(), rec, req)
 	reply := rec.Msg
 	opt := reply.Extra[len(reply.Extra)-1]
@@ -33,7 +33,7 @@ func TestDo(t *testing.T) {
 		t.Errorf("Expected %d bufsize, got %d", defaultUDPBufSize, x)
 	}
 
-	// Do set - so left alone
+	// Do set - so left alone.
 	const mysize = defaultUDPBufSize * 2
 	setDo(req)
 	// set bufsize to something else than default to see cache doesn't touch it
@@ -49,6 +49,21 @@ func TestDo(t *testing.T) {
 	}
 	if x := opt.(*dns.OPT).UDPSize(); x != mysize {
 		t.Errorf("Expected %d bufsize, got %d", mysize, x)
+	}
+
+	// edns0 set, but not DO, so _not_ left alone.
+	req.Extra[len(req.Extra)-1].(*dns.OPT).SetDo(false)
+	c.ServeDNS(context.TODO(), rec, req)
+	reply = rec.Msg
+	opt = reply.Extra[len(reply.Extra)-1]
+	if x, ok := opt.(*dns.OPT); !ok {
+		t.Fatalf("Expected OPT RR, got %T", x)
+	}
+	if !opt.(*dns.OPT).Do() {
+		t.Errorf("Expected DO bit to be set, got false")
+	}
+	if x := opt.(*dns.OPT).UDPSize(); x != defaultUDPBufSize {
+		t.Errorf("Expected %d bufsize, got %d", defaultUDPBufSize, x)
 	}
 }
 
