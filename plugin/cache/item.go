@@ -112,8 +112,8 @@ func (i *item) ttl(now time.Time) int {
 }
 
 // isDNSSEC returns true if r is a DNSSEC record. NSEC,NSEC3,DS and RRSIG/SIG
-// are DNSSEC records. DNSKEYs are left alone on the assumptions that if they
-// are there the client explictly asked for them.
+// are DNSSEC records. DNSKEYs is not in this list on the assumption that the
+// client explictly asked for it.
 func isDNSSEC(r dns.RR) bool {
 	switch r.Header().Rrtype {
 	case dns.TypeNSEC:
