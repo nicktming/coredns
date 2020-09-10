@@ -64,6 +64,9 @@ func (i *item) toMsg(m *dns.Msg, now time.Time, do bool) *dns.Msg {
 	// just set it to true.
 	m1.Authoritative = true
 	m1.AuthenticatedData = i.AuthenticatedData
+	if !do {
+		m1.AuthenticatedData = false // when DNSSEC was not wanted, it can't be authenticated data.
+	}
 	m1.RecursionAvailable = i.RecursionAvailable
 	m1.Rcode = i.Rcode
 
