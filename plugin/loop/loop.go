@@ -9,6 +9,7 @@ import (
 	"github.com/coredns/coredns/request"
 
 	"github.com/miekg/dns"
+	"fmt"
 )
 
 var log = clog.NewWithPlugin("loop")
@@ -31,6 +32,12 @@ func New(zone string) *Loop { return &Loop{zone: zone, qname: qname(zone)} }
 
 // ServeDNS implements the plugin.Handler interface.
 func (l *Loop) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) (int, error) {
+	if l.Next != nil {
+		fmt.Printf("this handler is: %v, and next handler is: %v\n", l.Name(), l.Next.Name())
+	} else {
+		fmt.Printf("this handler is: %v, and next handler is nil \n", l.Name())
+	}
+
 	if r.Question[0].Qtype != dns.TypeHINFO {
 		return plugin.NextOrFailure(l.Name(), l.Next, ctx, w, r)
 	}

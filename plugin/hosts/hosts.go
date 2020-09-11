@@ -10,6 +10,7 @@ import (
 	"github.com/coredns/coredns/request"
 
 	"github.com/miekg/dns"
+	"fmt"
 )
 
 // Hosts is the plugin handler
@@ -22,6 +23,11 @@ type Hosts struct {
 
 // ServeDNS implements the plugin.Handle interface.
 func (h Hosts) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) (int, error) {
+	if h.Next != nil {
+		fmt.Printf("this handler is: %v, and next handler is: %v\n", h.Name(), h.Next.Name())
+	} else {
+		fmt.Printf("this handler is: %v, and next handler is nil \n", h.Name())
+	}
 	state := request.Request{W: w, Req: r}
 	qname := state.Name()
 

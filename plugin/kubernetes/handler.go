@@ -7,10 +7,18 @@ import (
 	"github.com/coredns/coredns/request"
 
 	"github.com/miekg/dns"
+	"fmt"
 )
 
 // ServeDNS implements the plugin.Handler interface.
 func (k Kubernetes) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) (int, error) {
+
+	if k.Next != nil {
+		fmt.Printf("this handler is: %v, and next handler is: %v\n", k.Name(), k.Next.Name())
+	} else {
+		fmt.Printf("this handler is: %v, and next handler is nil \n", k.Name())
+	}
+
 	state := request.Request{W: w, Req: r}
 
 	qname := state.QName()
