@@ -76,6 +76,7 @@ func (f *Forward) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg
 		fmt.Printf("this handler is: %v, and next handler is nil \n", f.Name())
 	}
 	state := request.Request{W: w, Req: r}
+	fmt.Printf("this handler is: %v, and qname: %v\n", f.Name(), state.QName())
 	if !f.match(state) {
 		return plugin.NextOrFailure(f.Name(), f.Next, ctx, w, r)
 	}

@@ -21,6 +21,7 @@ func (k Kubernetes) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.M
 
 	qname := state.QName()
 	zone := plugin.Zones(k.Zones).Matches(qname)
+	fmt.Printf("this handler is: %v, and qname: %v with zone: %v \n", k.Name(), qname, zone)
 	if zone == "" {
 		return plugin.NextOrFailure(k.Name(), k.Next, ctx, w, r)
 	}
