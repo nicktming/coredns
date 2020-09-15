@@ -96,7 +96,10 @@ func (f *Forward) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg
 	span = ot.SpanFromContext(ctx)
 	i := 0
 	list := f.List()
-	fmt.Printf("===>use proxy list: %v\n", list)
+	fmt.Println("===>use proxy list")
+	for _, l := range list {
+		fmt.Printf("l: %v\n", l.addr)
+	}
 	deadline := time.Now().Add(defaultTimeout)
 	start := time.Now()
 	for time.Now().Before(deadline) {
