@@ -106,6 +106,9 @@ func (f *Forward) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg
 		}
 
 		proxy := list[i]
+
+		fmt.Printf("===>use proxy %v\n", proxy.addr)
+
 		i++
 		if proxy.Down(f.maxfails) {
 			fails++
